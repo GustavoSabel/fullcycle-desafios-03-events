@@ -3,6 +3,8 @@ import Customer from "../../../../domain/customer/entity/customer";
 import Address from "../../../../domain/customer/value-object/address";
 import CustomerModel from "./customer.model";
 import CustomerRepository from "./customer.repository";
+import { eventDispatcher } from "../../../../domain/@shared/event/event-dispatcher-provider";
+import CustomerCreatedEvent from "../../../../domain/customer/event/customer-created-event";
 
 describe("Customer repository test", () => {
   let sequelize: Sequelize;
@@ -108,5 +110,21 @@ describe("Customer repository test", () => {
     expect(customers).toHaveLength(2);
     expect(customers).toContainEqual(customer1);
     expect(customers).toContainEqual(customer2);
+  });
+
+  // Teste novo
+  it("Create should notifiy all event handlers", async () => {
+    const customerRepository = new CustomerRepository();
+    const customer = new Customer("123", "Customer 1");
+    const address = new Address("Street 1", 1, "Zipcode 1", "City 1");
+    customer.Address = address;
+
+    const allEvents = eventDispatcher.getEventHandlers[CustomerCreatedEvent.name]
+    const spiesEventHandler = allEvents.map(eventHandler => jest.spyOn(eventHandler, "handle"));
+    await customerRepository.create(customer);
+
+    spiesEventHandler.forEach(spyEventHandler => {
+      expect(spyEventHandler).toHaveBeenCalled();
+    });
   });
 });
